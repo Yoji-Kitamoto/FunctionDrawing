@@ -45,9 +45,13 @@ public class Main extends Application {
 		int priority = 0;
 
 		switch(operand) {
+			case "sin":
+				priority = 1;
+				break;
+
 			case "^":
 				priority = 2;
-			break;
+				break;
 
 			case "*":
 			case "#":
@@ -62,7 +66,6 @@ public class Main extends Application {
 				break;
 		}
 
-
 		return priority;
 	}
 
@@ -73,7 +76,7 @@ public class Main extends Application {
 		// 以下の操作には未対応
 		// π (円周率)
 		// log ln exp
-		// sin cos tan (sec) (csc (cosec)) (cot)
+		// cos tan (sec) (csc (cosec)) (cot)
 		// Asin Acos Atan (Asec) (Acsc (Acosec)) (Acot)
 		// sinh cosh tanh (sech) (csch (cosech)) (coth)
 		// Asinh Acosh Atanh (Asech) (Acsch (Acosech)) (Acoth)
@@ -84,7 +87,6 @@ public class Main extends Application {
 		if(isStartsWithMinus) {
 			formula = formula.substring(1);
 		}
-
 
 		String[] chars = formula.split("");
 
@@ -113,11 +115,17 @@ public class Main extends Application {
 
 			// 結合性, 左結合性の演算子 (+, -, * /) をスタックに格納
 			if((i < chars.length) && (chars[i].matches("\\+|-|\\*|\\/|#|&"))) {
-				if(!operands.empty() && !operands.peek().equals("(") && (priority(chars[i]) >= priority(operands.peek()))) {
+				if(!operands.empty() && !operands.peek().equals("(") && !operands.peek().equals("sin") && (priority(chars[i]) >= priority(operands.peek()))) {
 					result.add(operands.pop());
 				}
 
 				operands.push(chars[i]);
+			}
+
+			if((i < (chars.length - 2)) && chars[i].equals("s") && chars[i + 1].equals("i") && chars[i + 2].equals("n")) {
+				operands.push("sin");
+				i += 2;
+				continue;
 			}
 
 			// 右結合性の演算子 (^) をスタックに格納
@@ -155,9 +163,6 @@ public class Main extends Application {
 
 	// 描画する関数
 	double function(String formula, double x) {
-		System.out.println(formula);
-		System.out.println(x);
-
 		// TODO: x に負の数を代入した場合に対応する
 		// formula に x を代入した式 (x が負の数の場合には未対応)
 		// 独自の演算子 "#", "&" を定義
@@ -169,12 +174,10 @@ public class Main extends Application {
 											.replaceAll("--", "+")
 											.replaceAll("\\*-", "#")
 											.replaceAll("\\/-", "&")
-											.replaceAll("\\(-", "(0-");
-
-		System.out.println(formulaSubstituedX);
+											.replaceAll("\\(-", "(0-")
+											.replaceAll("(?<=\\d)(sin)", "*sin");
 
 		var reversePolishNotationArrayList = reversePolishNotation(formulaSubstituedX);
-		System.out.println(reversePolishNotationArrayList);
 
 		var nums = new Stack<Double>();
 
@@ -223,10 +226,13 @@ public class Main extends Application {
 				double a = nums.pop();
 
 				nums.push(Math.pow(a, b));
+			} else if(reversePolishNotationArrayList.get(i).equals("sin")) {
+				// sin(a)
+				double a = nums.pop();
+
+				nums.push(Math.sin(a));
 			}
 		}
-
-		System.out.println(nums);
 
 		// 戻り値 (暫定)
 		return nums.pop();
@@ -261,9 +267,6 @@ public class Main extends Application {
 			var label = new Label("f(x) = ");
 			label.setFont(new Font(20));
 
-			var debugLabel = new Label("debug");
-			debugLabel.setFont(new Font(18));
-
 			var textField = new TextField("0");
 			textField.setFont(new Font(16));
 			textField.setPrefWidth(130);
@@ -279,8 +282,6 @@ public class Main extends Application {
 			button.setOnAction((actionEvent) -> {
 				drawFunction(graphicsContext, textField.getText());
 
-				// debugLabel.setText(String.valueOf(reversePolishNotation(textField.getText())));
-
 				button.setDisable(true);
 			});
 
@@ -293,13 +294,12 @@ public class Main extends Application {
 				drawAxis(canvas, graphicsContext);
 
 				textField.setText("0");
-				debugLabel.setText("debug");
 
 				button.setDisable(false);
 			});
 
 			var borderPane = new BorderPane();
-			borderPane.setCenter(new HBox(canvas, new VBox(new HBox(label, textField), debugLabel, button, clearButton)));
+			borderPane.setCenter(new HBox(canvas, new VBox(new HBox(label, textField), button, clearButton)));
 
 			Scene scene = new Scene(borderPane, 700, 400);
 			scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
